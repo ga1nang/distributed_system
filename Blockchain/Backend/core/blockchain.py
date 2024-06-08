@@ -57,13 +57,13 @@ class Blockchain:
             portList = node.read()
 
             for port in portList:
-                if localHostPort != port:
+                if Port != port:
                     sync = syncManager(localHost, port, secondryChain = self.secondryChain)
                     try:
                         if block:
-                            sync.publishBlock(localHostPort - 1, port, block) 
+                            sync.publishBlock(Port - 1, port, block) 
                         else:                    
-                            sync.startDownload(localHostPort - 1, port, True)
+                            sync.startDownload(Port - 1, port, True)
                   
                     except Exception as err:
                         pass
@@ -373,7 +373,7 @@ if __name__ == "__main__":
     config = configparser.ConfigParser()
     config.read('config.ini')
     localHost = config['DEFAULT']['host']
-    localHostPort = int(config['MINER']['port'])
+    Port = int(config['MINER']['port'])
     simulateBTC = bool(config['MINER']['simulateBTC'])
     webport = int(config['Webhost']['port'])
 
@@ -383,11 +383,11 @@ if __name__ == "__main__":
         newBlockAvailable = manager.dict()
         secondryChain = manager.dict()
         
-        webapp = Process(target=main, args=(utxos, MemPool, webport, localHostPort))
+        webapp = Process(target=main, args=(utxos, MemPool, webport, Port))
         webapp.start()
         
         """ Start Server and Listen for miner requests """
-        sync = syncManager(localHost, localHostPort, newBlockAvailable, secondryChain, MemPool)
+        sync = syncManager(localHost, Port, newBlockAvailable, secondryChain, MemPool)
         startServer = Process(target = sync.spinUpTheServer)
         startServer.start()
 

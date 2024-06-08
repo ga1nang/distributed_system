@@ -7,8 +7,9 @@ from Blockchain.Backend.core.network.network import NetworkEnvelope, requestBloc
 from threading import Thread
 
 from Blockchain.Backend.util.util import little_endian_to_int 
+
 class syncManager:
-    def __init__(self, host, port, newBlockAvailable = None, secondryChain = None, Mempool = None):
+    def __init__(self, host, port, newBlockAvailable=None, secondryChain=None, Mempool=None):
         self.host = host
         self.port = port 
         self.newBlockAvailable = newBlockAvailable
@@ -23,7 +24,7 @@ class syncManager:
 
         while True:
             self.conn, self.addr = self.server.acceptConnection()
-            handleConn = Thread(target = self.handleConnection)
+            handleConn = Thread(target=self.handleConnection)
             handleConn.start()
 
     def handleConnection(self):
@@ -92,7 +93,6 @@ class syncManager:
             envelope = NetworkEnvelope(TempSecChain[blockHash].command, TempSecChain[blockHash].serialize())
             self.conn.sendall(envelope.serialize())
 
-
     def sendFinishedMessage(self):
         MessageFinish = FinishedSending()
         envelope = NetworkEnvelope(MessageFinish.command, MessageFinish.serialize())
@@ -123,24 +123,24 @@ class syncManager:
         
         return blocksToSend
 
-    def connectToHost(self, localport, port, bindPort = None):
-        self.connect = Node(self.host, port)
+    def connectToHost(self, peer_host, peer_port, bindPort=None):
+        self.connect = Node(self.host, peer_port)
 
         if bindPort:
-            self.socket = self.connect.connect(localport, bindPort)
+            self.socket = self.connect.connect(peer_host, peer_port, bindPort)
         else:
-            self.socket = self.connect.connect(localport)
+            self.socket = self.connect.connect(peer_host, peer_port)
 
         self.stream = self.socket.makefile('rb', None)
     
-    def publishBlock(self, localport, port, block):
-        self.connectToHost(localport, port)
+    def publishBlock(self, peer_host, peer_port, block):
+        self.connectToHost(peer_host, peer_port)
         self.connect.send(block)
 
     def publishTx(self, Tx):
         self.connect.send(Tx)
      
-    def startDownload(self, localport,  port, bindPort):
+    def startDownload(self, peer_host, peer_port, bindPort):
         lastBlock = BlockchainDB().lastBlock()
 
         if not lastBlock:
@@ -151,7 +151,7 @@ class syncManager:
         startBlock = bytes.fromhex(lastBlockHeader)
 
         getHeaders = requestBlock(startBlock=startBlock)
-        self.connectToHost(localport, port, bindPort)
+        self.connectToHost(peer_host, peer_port, bindPort)
         self.connect.send(getHeaders)
 
         while True:    
@@ -195,4 +195,3 @@ class syncManager:
                     print(f"Block Received - {blockObj.Height}")
                 else:
                     self.secondryChain[BlockHeaderObj.generateBlockHash()] = blockObj
-                

@@ -13,13 +13,13 @@ class Node:
         self.server.bind(self.ADDR)
         self.server.listen()
 
-    def connect(self, port, bindPort = None):
+    def connect(self, peer_host, peer_port, bindPort=None):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
         if bindPort:
-            self.socket.bind((self.host, port))
+            self.socket.bind((self.host, bindPort))
 
-        self.socket.connect((self.host, self.port))
+        self.socket.connect((peer_host, peer_port))
         return self.socket
 
     def acceptConnection(self):
