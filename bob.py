@@ -73,8 +73,8 @@ if __name__ == "__main__":
     time.sleep(2)
 
     # Connect to another peer (example IP address and port, change these accordingly)
-    peer_host = input("Enter the peer IP address to connect to: ")
-    peer_port = int(input("Enter the peer port to connect to: "))
+    peer_host = "172.16.190.58"
+    peer_port = 8000
     node.connect(peer_host, peer_port)
 
     # Send messages to connected peers

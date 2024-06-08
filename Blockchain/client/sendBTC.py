@@ -39,7 +39,7 @@ class SendBTC:
         try:
             while len(newutxos) < 1:
                 newutxos = dict(self.utxos)
-                time.sleep(2)
+                time.sleep(1)
         except Exception as e:
             print(f"Error in converting the Managed Dict to Normal Dict")
 

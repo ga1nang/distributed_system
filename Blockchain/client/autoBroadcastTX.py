@@ -17,4 +17,4 @@ def autoBroadcast():
                         "Amount": random.randint(1,35)}
 
                 res = requests.post(url ="http://localhost:5900/wallet", data = paras)   
-        time.sleep(3)
+        time.sleep(2)
