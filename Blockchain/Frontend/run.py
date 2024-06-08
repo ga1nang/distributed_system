@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request, redirect, url_for
 from Blockchain.client.sendBTC import SendBTC
 from Blockchain.Backend.core.Tx import Tx
@@ -13,7 +12,7 @@ app = Flask(__name__)
 qrcode = QRcode(app)
 main_prefix = b'\x00'
 global memoryPool
-memoryPool ={}
+memoryPool = {}
 
 @app.route('/')
 def index():
@@ -21,19 +20,19 @@ def index():
 
 @app.route('/transactions/<txid>')
 @app.route('/transactions')
-def transactions(txid = None):
+def transactions(txid=None):
     if txid:
-        return redirect(url_for('txDetail', txid = txid))
+        return redirect(url_for('txDetail', txid=txid))
     else:
         ErrorFlag = True
         while ErrorFlag:
             try:
                 allTxs = dict(UTXOS)
                 ErrorFlag = False
-                return render_template("transactions.html",allTransactions = allTxs,refreshtime = 10)
+                return render_template("transactions.html", allTransactions=allTxs, refreshtime=10)
             except:
                 ErrorFlag = True
-                return render_template('transactions.html', allTransactions={}, refreshtime = 10)
+                return render_template('transactions.html', allTransactions={}, refreshtime=10)
 
 @app.route('/tx/<txid>')
 def txDetail(txid):
@@ -41,8 +40,8 @@ def txDetail(txid):
     for block in blocks:
         for Tx in block['Txs']:
             if Tx['TxId'] == txid:
-                return render_template('txDetail.html', Tx=Tx, block = block , encode_base58 = encode_base58,
-                bytes = bytes, sha256 = sha256, main_prefix = main_prefix)
+                return render_template('txDetail.html', Tx=Tx, block=block, encode_base58=encode_base58,
+                                       bytes=bytes, sha256=sha256, main_prefix=main_prefix)
     return "<h1> No Results Found </h1>"
 
 @app.route('/mempool')
@@ -51,13 +50,13 @@ def mempool():
         blocks = readDatabase()
         ErrorFlag = True
         while ErrorFlag:
-            try: 
+            try:
                 mempooltxs = dict(MEMPOOL)
                 ErrorFlag = False
             except:
                 ErrorFlag = True
 
-        """" If TxId is not in the Origional list then remove it from the mempool """
+        """" If TxId is not in the original list then remove it from the mempool """
         for txid in memoryPool:
             if txid not in mempooltxs:
                 del memoryPool[txid]
@@ -65,7 +64,7 @@ def mempool():
         """Add the new Tx to the mempool if it is not already there"""
         for Txid in mempooltxs:
             amount = 0
-            TxObj = mempooltxs[Txid]      
+            TxObj = mempooltxs[Txid]
             matchFound = False
 
             """ Total Amount """
@@ -73,38 +72,38 @@ def mempool():
                 for block in blocks:
                     for Tx in block['Txs']:
                         if Tx['TxId'] == txin.prev_tx.hex():
-                            amount  += Tx['tx_outs'][txin.prev_index]['amount']
+                            amount += Tx['tx_outs'][txin.prev_index]['amount']
                             matchFound = True
                             break
                     if matchFound:
                         matchFound = False
                         break
-            memoryPool[TxObj.TxId] = [TxObj.to_dict(), amount/100000000, txin.prev_index]
-        return render_template('mempool.html', Txs = memoryPool,refreshtime = 2)
+            memoryPool[TxObj.TxId] = [TxObj.to_dict(), amount / 100000000, txin.prev_index]
+        return render_template('mempool.html', Txs=memoryPool, refreshtime=2)
 
     except Exception as e:
-        return render_template('mempool.html', Txs = memoryPool,refreshtime = 2)
+        return render_template('mempool.html', Txs=memoryPool, refreshtime=2)
 
 @app.route('/memTx/<txid>')
 def memTxDetails(txid):
     if txid in memoryPool:
         Tx = memoryPool.get(txid)[0]
-        return render_template('txDetail.html', Tx = Tx, refreshtime = 2,
-        encode_base58 = encode_base58, bytes = bytes, sha256 = sha256, main_prefix = main_prefix,
-        Unconfirmed = True)
+        return render_template('txDetail.html', Tx=Tx, refreshtime=2,
+                               encode_base58=encode_base58, bytes=bytes, sha256=sha256, main_prefix=main_prefix,
+                               Unconfirmed=True)
     else:
-        return redirect(url_for('transactions', txid = txid))
-        
+        return redirect(url_for('transactions', txid=txid))
+
 @app.route('/search')
 def search():
     identifier = request.args.get('search')
     if len(identifier) == 64:
         if identifier[:4] == "0000":
-            return redirect(url_for('showBlock', blockHeader = identifier))
+            return redirect(url_for('showBlock', blockHeader=identifier))
         else:
-            return redirect(url_for('txDetail', txid = identifier))
+            return redirect(url_for('txDetail', txid=identifier))
     else:
-        return redirect(url_for('address', publicAddress = identifier))
+        return redirect(url_for('address', publicAddress=identifier))
 
 """ Read data from the Blockchain """
 def readDatabase():
@@ -123,18 +122,18 @@ def readDatabase():
 def block():
     header = request.args.get('blockHeader')
     if request.args.get('blockHeader'):
-        return redirect(url_for('showBlock', blockHeader=request.args.get('blockHeader')) )
+        return redirect(url_for('showBlock', blockHeader=request.args.get('blockHeader')))
     else:
         blocks = readDatabase()
-        return render_template('block.html', blocks=blocks, refreshtime = 10)
+        return render_template('block.html', blocks=blocks, refreshtime=10)
 
 @app.route('/block/<blockHeader>')
 def showBlock(blockHeader):
     blocks = readDatabase()
     for block in blocks:
         if block['BlockHeader']['blockHash'] == blockHeader:
-            return render_template('blockDetails.html', block = block, main_prefix = main_prefix, 
-            encode_base58 = encode_base58, bytes = bytes, sha256 = sha256)
+            return render_template('blockDetails.html', block=block, main_prefix=main_prefix, 
+                                   encode_base58=encode_base58, bytes=bytes, sha256=sha256)
     
     return "<h1> Invalid Identifier </h1>"
 
@@ -155,17 +154,16 @@ def address(publicAddress):
         AccountUtxos = []
 
         for TxId in AllUtxos:
-           for tx_out in AllUtxos[TxId].tx_outs:
-            if tx_out.script_pubkey.cmds[2] == h160:
-                amount += tx_out.amount
-                AccountUtxos.append(AllUtxos[TxId])
+            for tx_out in AllUtxos[TxId].tx_outs:
+                if tx_out.script_pubkey.cmds[2] == h160:
+                    amount += tx_out.amount
+                    AccountUtxos.append(AllUtxos[TxId])
         
-        return render_template('address.html', Txs = AccountUtxos, amount = amount,
-        encode_base58 = encode_base58, bytes = bytes, sha256 = sha256, main_prefix = main_prefix, 
-        publicAddress = publicAddress, qrcode = qrcode)
+        return render_template('address.html', Txs=AccountUtxos, amount=amount,
+                               encode_base58=encode_base58, bytes=bytes, sha256=sha256, main_prefix=main_prefix, 
+                               publicAddress=publicAddress, qrcode=qrcode)
     else:
         return "<h1> Invalid Identifier </h1>"
-
 
 @app.route("/wallet", methods=["GET", "POST"])
 def wallet():
@@ -190,13 +188,13 @@ def wallet():
 
             if verified:
                 MEMPOOL[TxObj.TxId] = TxObj
-                relayTxs = Process(target = broadcastTx, args = (TxObj, localHostPort)) 
+                relayTxs = Process(target=broadcastTx, args=(TxObj, localHostPort)) 
                 relayTxs.start()
                 message = "Transaction added in memory Pool"
 
     return render_template("wallet.html", message=message)
 
-def broadcastTx(TxObj, localHostPort = None):
+def broadcastTx(TxObj, localHostPort=None):
     try:
         node = NodeDB()
         portList = node.read()
@@ -221,4 +219,4 @@ def main(utxos, MemPool, port, localPort):
     UTXOS = utxos
     MEMPOOL = MemPool
     localHostPort = localPort
-    app.run(port = port)
+    app.run(host='172.16.135.102', port=port)  # Ensure the Flask server binds to the correct LAN IP address

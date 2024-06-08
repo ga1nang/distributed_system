@@ -10,7 +10,7 @@ from Blockchain.Backend.util.util import hash256, merkle_root, target_to_bits, b
 from Blockchain.Backend.core.database.database import BlockchainDB, NodeDB
 from Blockchain.Backend.core.Tx import CoinbaseTx, Tx
 from multiprocessing import Process, Manager
-from Blockchain.Frontend.run import main
+from Blockchain.Frontend.run import main as run_main
 from Blockchain.Backend.core.network.syncManager import syncManager
 from Blockchain.client.autoBroadcastTX import autoBroadcast
 import time
@@ -18,12 +18,8 @@ import time
 ZERO_HASH = "0" * 64
 VERSION = 1
 INITIAL_TARGET = 0x0000FFFF00000000000000000000000000000000000000000000000000000000
-MAX_TARGET     = 0x0000ffff00000000000000000000000000000000000000000000000000000000
+MAX_TARGET = 0x0000ffff00000000000000000000000000000000000000000000000000000000
 
-"""
-# Calculate new Target to keep our Block mine time under 20 seconds
-# Reset Block Difficulty after every 10 Blocks
-"""
 AVERAGE_BLOCK_MINE_TIME = 20
 RESET_DIFFICULTY_AFTER_BLOCKS = 10
 AVERAGE_MINE_TIME = AVERAGE_BLOCK_MINE_TIME * RESET_DIFFICULTY_AFTER_BLOCKS
@@ -50,47 +46,41 @@ class Blockchain:
         prevBlockHash = ZERO_HASH
         self.addBlock(BlockHeight, prevBlockHash)
 
-    """ Start the Sync Node """
-    def startSync(self, block = None):
+    def startSync(self, block=None):
         try:
             node = NodeDB()
             portList = node.read()
 
             for port in portList:
                 if Port != port:
-                    sync = syncManager(localHost, port, secondryChain = self.secondryChain)
+                    sync = syncManager(localHost, port, secondryChain=self.secondryChain)
                     try:
                         if block:
-                            sync.publishBlock(Port - 1, port, block) 
-                        else:                    
+                            sync.publishBlock(Port - 1, port, block)
+                        else:
                             sync.startDownload(Port - 1, port, True)
-                  
                     except Exception as err:
                         pass
-                    
         except Exception as err:
             pass
-       
-    """ Keep Track of all the unspent Transaction in cache memory for fast retrival"""
+
     def store_uxtos_in_cache(self):
         for tx in self.addTransactionsInBlock:
-            print(f"Transaction added {tx.TxId} ")
+            print(f"Transaction added {tx.TxId}")
             self.utxos[tx.TxId] = tx
 
     def remove_spent_Transactions(self):
         for txId_index in self.remove_spent_transactions:
             if txId_index[0].hex() in self.utxos:
-
                 if len(self.utxos[txId_index[0].hex()].tx_outs) < 2:
-                    print(f" Spent Transaction removed {txId_index[0].hex()} ")
+                    print(f" Spent Transaction removed {txId_index[0].hex()}")
                     del self.utxos[txId_index[0].hex()]
                 else:
                     prev_trans = self.utxos[txId_index[0].hex()]
                     self.utxos[txId_index[0].hex()] = prev_trans.tx_outs.pop(
                         txId_index[1]
                     )
-                    
-    """ Check if it is a double spending Attempt """
+
     def doubleSpendingAttempt(self, tx):
         for txin in tx.tx_ins:
             if txin.prev_tx not in self.prevTxs and txin.prev_tx.hex() in self.utxos:
@@ -98,7 +88,6 @@ class Blockchain:
             else:
                 return True
 
-    """ Read Transactions from Memory Pool"""
     def read_transaction_from_memorypool(self):
         self.Blocksize = 80
         self.TxIds = []
@@ -108,7 +97,7 @@ class Blockchain:
         deleteTxs = []
 
         tempMemPool = dict(self.MemPool)
-        
+
         if self.Blocksize < 1000000:
             for tx in tempMemPool:
                 if not self.doubleSpendingAttempt(tempMemPool[tx]):
@@ -121,12 +110,10 @@ class Blockchain:
                         self.remove_spent_transactions.append([spent.prev_tx, spent.prev_index])
                 else:
                     deleteTxs.append(tx)
-        
+
         for txId in deleteTxs:
             del self.MemPool[txId]
 
-           
-    """ Remove Transactions from Memory pool """
     def remove_transactions_from_memorypool(self):
         for tx in self.TxIds:
             if tx.hex() in self.MemPool:
@@ -140,14 +127,12 @@ class Blockchain:
     def calculate_fee(self):
         self.input_amount = 0
         self.output_amount = 0
-        """ Calculate Input Amount """
         for TxId_index in self.remove_spent_transactions:
             if TxId_index[0].hex() in self.utxos:
                 self.input_amount += (
                     self.utxos[TxId_index[0].hex()].tx_outs[TxId_index[1]].amount
                 )
 
-        """ Calculate Output Amount """
         for tx in self.addTransactionsInBlock:
             for tx_out in tx.tx_outs:
                 self.output_amount += tx_out.amount
@@ -161,7 +146,7 @@ class Blockchain:
         for block in blocks:
             for tx in block['Txs']:
                 allTxs[tx['TxId']] = tx
-            
+
         for block in blocks:
             for tx in block['Txs']:
                 for txin in tx['tx_ins']:
@@ -171,17 +156,16 @@ class Blockchain:
                         else:
                             txOut = allTxs[txin['prev_tx']]['tx_outs']
                             txOut.pop(txin['prev_index'])
-        
+
         for tx in allTxs:
             self.utxos[tx] = Tx.to_obj(allTxs[tx])
-
 
     def settargetWhileBooting(self):
         bits, timestamp = self.getTargetDifficultyAndTimestamp()
         self.bits = bytes.fromhex(bits)
         self.current_target = bits_to_target(self.bits)
 
-    def getTargetDifficultyAndTimestamp(self, BlockHeight = None):
+    def getTargetDifficultyAndTimestamp(self, BlockHeight=None):
         if BlockHeight:
             blocks = BlockchainDB().read()
             bits = blocks[BlockHeight]['BlockHeader']['bits']
@@ -191,7 +175,6 @@ class Blockchain:
             bits = block['BlockHeader']['bits']
             timestamp = block['BlockHeader']['timestamp']
         return bits, timestamp
-
 
     def adjustTargetDifficulty(self, BlockHeight):
         if BlockHeight % 10 == 0:
@@ -206,7 +189,7 @@ class Blockchain:
 
             if NEW_TARGET > MAX_TARGET:
                 NEW_TARGET = MAX_TARGET
-            
+
             self.bits = target_to_bits(NEW_TARGET)
             self.current_target = NEW_TARGET
 
@@ -220,20 +203,19 @@ class Blockchain:
         for newblock in tempBlocks:
             block = tempBlocks[newblock]
             deleteBlock.append(newblock)
-        
+
             BlockHeaderObj = BlockHeader(block.BlockHeader.version,
-                                block.BlockHeader.prevBlockHash, 
-                                block.BlockHeader.merkleRoot, 
-                                block.BlockHeader.timestamp,
-                                block.BlockHeader.bits,
-                                block.BlockHeader.nonce)
+                                         block.BlockHeader.prevBlockHash,
+                                         block.BlockHeader.merkleRoot,
+                                         block.BlockHeader.timestamp,
+                                         block.BlockHeader.bits,
+                                         block.BlockHeader.nonce)
 
             if BlockHeaderObj.validateBlock():
                 for idx, tx in enumerate(block.Txs):
                     self.utxos[tx.id()] = tx.serialize()
                     block.Txs[idx].TxId = tx.id()
 
-                    """ Remove Spent Transactions """
                     for txin in tx.tx_ins:
                         if txin.prev_tx.hex() in self.utxos:
                             del self.utxos[txin.prev_tx.hex()]
@@ -242,11 +224,10 @@ class Blockchain:
                         del self.MemPool[tx.id()]
 
                     block.Txs[idx] = tx.to_dict()
-                    
+
                 block.BlockHeader.to_hex()
                 BlockchainDB().write([block.to_dict()])
             else:
-                """ Resolve the Conflict b/w ther Miners """
                 orphanTxs = {}
                 validTxs = {}
                 if self.secondryChain:
@@ -260,7 +241,7 @@ class Blockchain:
                             addBlocks.append(self.secondryChain[prevBlockhash])
                             prevBlockhash = self.secondryChain[prevBlockhash].BlockHeader.prevBlockHash.hex()
                         count += 1
-                    
+
                     blockchain = BlockchainDB().read()
                     lastValidBlock = blockchain[-len(addBlocks)]
 
@@ -272,12 +253,11 @@ class Blockchain:
                                 if tx['TxId'] in self.utxos:
                                     del self.utxos[tx['TxId']]
 
-                                    """ Don't Include COINBASE TX because it didn't come from MEMPOOL"""
                                     if tx['tx_ins'][0]['prev_tx'] != "0000000000000000000000000000000000000000000000000000000000000000":
                                         orphanTxs[tx['TxId']] = tx
 
                         BlockchainDB().update(blockchain)
-                        
+
                         for Bobj in addBlocks[::-1]:
                             validBlock = copy.deepcopy(Bobj)
                             validBlock.BlockHeader.to_hex()
@@ -286,26 +266,23 @@ class Blockchain:
                                 validBlock.Txs[index].TxId = tx.id()
                                 self.utxos[tx.id()] = tx
 
-                                """ Remove Spent Transactions """
                                 for txin in tx.tx_ins:
                                     if txin.prev_tx.hex() in self.utxos:
                                         del self.utxos[txin.prev_tx.hex()]
-                                
+
                                 if tx.tx_ins[0].prev_tx.hex() != "0000000000000000000000000000000000000000000000000000000000000000":
                                     validTxs[validBlock.Txs[index].TxId] = tx
 
                                 validBlock.Txs[index] = tx.to_dict()
-                            
+
                             BlockchainDB().write([validBlock.to_dict()])
-                        
-                        """ Add Transactoins Back to MemPool """
+
                         for TxId in orphanTxs:
                             if TxId not in validTxs:
                                 self.MemPool[TxId] = Tx.to_obj(orphanTxs[TxId])
 
                 self.secondryChain[newblock] = block
 
-        
         for blockHash in deleteBlock:
             del self.newBlockAvailable[blockHash]
 
@@ -325,7 +302,7 @@ class Blockchain:
         merkleRoot = merkle_root(self.TxIds)[::-1].hex()
         self.adjustTargetDifficulty(BlockHeight)
         blockheader = BlockHeader(
-            VERSION, prevBlockHash, merkleRoot, timestamp, self.bits, nonce = 0
+            VERSION, prevBlockHash, merkleRoot, timestamp, self.bits, nonce=0
         )
         competitionOver = blockheader.mine(self.current_target, self.newBlockAvailable)
 
@@ -333,10 +310,10 @@ class Blockchain:
             self.LostCompetition()
         else:
             newBlock = Block(BlockHeight, self.Blocksize, blockheader, len(self.addTransactionsInBlock),
-                            self.addTransactionsInBlock)
+                             self.addTransactionsInBlock)
             blockheader.to_bytes()
             block = copy.deepcopy(newBlock)
-            broadcastNewBlock = Process(target = self.BroadcastBlock, args = (block, ))
+            broadcastNewBlock = Process(target=self.BroadcastBlock, args=(block,))
             broadcastNewBlock.start()
             blockheader.to_hex()
             self.remove_spent_Transactions()
@@ -366,15 +343,13 @@ class Blockchain:
             print(f"Current Block Height is is {BlockHeight}")
             prevBlockHash = lastBlock["BlockHeader"]["blockHash"]
             self.addBlock(BlockHeight, prevBlockHash)
-            
+
 if __name__ == "__main__":
-    
-    """ read configuration file """
     config = configparser.ConfigParser()
     config.read('config.ini')
-    localHost = config['DEFAULT']['host']
+    localHost = config['MINER']['host']
     Port = int(config['MINER']['port'])
-    simulateBTC = bool(config['MINER']['simulateBTC'])
+    simulateBTC = config.getboolean('MINER', 'simulatebtc')
     webport = int(config['Webhost']['port'])
 
     with Manager() as manager:
@@ -382,13 +357,12 @@ if __name__ == "__main__":
         MemPool = manager.dict()
         newBlockAvailable = manager.dict()
         secondryChain = manager.dict()
-        
-        webapp = Process(target=main, args=(utxos, MemPool, webport, Port))
+
+        webapp = Process(target=run_main, args=(utxos, MemPool, webport, Port))
         webapp.start()
-        
-        """ Start Server and Listen for miner requests """
+
         sync = syncManager(localHost, Port, newBlockAvailable, secondryChain, MemPool)
-        startServer = Process(target = sync.spinUpTheServer)
+        startServer = Process(target=sync.spinUpTheServer)
         startServer.start()
 
         blockchain = Blockchain(utxos, MemPool, newBlockAvailable, secondryChain)
@@ -396,7 +370,7 @@ if __name__ == "__main__":
         blockchain.buildUTXOS()
 
         if simulateBTC:
-            autoBroadcastTxs = Process(target = autoBroadcast)
+            autoBroadcastTxs = Process(target=autoBroadcast)
             autoBroadcastTxs.start()
 
         blockchain.settargetWhileBooting()
