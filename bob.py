@@ -8,13 +8,17 @@ class Peer:
         self.port = port
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connections = []
+        self.connection_addresses = set()
 
     def connect(self, peer_host, peer_port):
         try:
             connection = socket.create_connection((peer_host, peer_port))
-            self.connections.append(connection)
-            print(f"Connected to {peer_host}:{peer_port}")
-            threading.Thread(target=self.handle_client, args=(connection, (peer_host, peer_port))).start()
+            connection_address = (peer_host, peer_port)
+            if connection_address not in self.connection_addresses:
+                self.connections.append(connection)
+                self.connection_addresses.add(connection_address)
+                print(f"Connected to {peer_host}:{peer_port}")
+                threading.Thread(target=self.handle_client, args=(connection, connection_address)).start()
         except socket.error as e:
             print(f"Failed to connect to {peer_host}:{peer_port}. Error: {e}")
 
@@ -25,9 +29,11 @@ class Peer:
 
         while True:
             connection, address = self.socket.accept()
-            self.connections.append(connection)
-            print(f"Accepted connection from {address}")
-            threading.Thread(target=self.handle_client, args=(connection, address)).start()
+            if address not in self.connection_addresses:
+                self.connections.append(connection)
+                self.connection_addresses.add(address)
+                print(f"Accepted connection from {address}")
+                threading.Thread(target=self.handle_client, args=(connection, address)).start()
 
     def send_data(self, data):
         for connection in self.connections:
@@ -36,6 +42,7 @@ class Peer:
             except socket.error as e:
                 print(f"Failed to send data. Error: {e}")
                 self.connections.remove(connection)
+                self.connection_addresses.remove(connection.getpeername())
 
     def handle_client(self, connection, address):
         while True:
@@ -49,6 +56,7 @@ class Peer:
 
         print(f"Connection from {address} closed.")
         self.connections.remove(connection)
+        self.connection_addresses.remove(address)
         connection.close()
 
     def start_listening(self):
