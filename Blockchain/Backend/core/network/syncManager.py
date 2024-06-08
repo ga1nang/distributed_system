@@ -5,8 +5,7 @@ from Blockchain.Backend.core.database.database import BlockchainDB, NodeDB
 from Blockchain.Backend.core.Tx import Tx
 from Blockchain.Backend.core.network.network import NetworkEnvelope, requestBlock, FinishedSending, portlist
 from threading import Thread
-
-from Blockchain.Backend.util.util import little_endian_to_int 
+from Blockchain.Backend.util.util import little_endian_to_int
 
 class syncManager:
     def __init__(self, host, port, newBlockAvailable=None, secondryChain=None, Mempool=None):

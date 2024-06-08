@@ -201,7 +201,7 @@ def broadcastTx(TxObj, localHostPort=None):
 
         for port in portList:
             if localHostPort != port:
-                sync = syncManager('172.16.135.102', port)
+                sync = syncManager('16.135.102', port)
                 try:
                     sync.connectToHost(localHostPort - 1, port)
                     sync.publishTx(TxObj)

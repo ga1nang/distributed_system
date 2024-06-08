@@ -1,19 +1,17 @@
 import sys
 
-sys.path.append("E:/subject/Distributed_System/test/oke1")
+sys.path.append("E:\\subject\\Distributed_System\\test\\oke1")
 
-import copy
 import configparser
+from multiprocessing import Process, Manager
+import time
 from Blockchain.Backend.core.block import Block
 from Blockchain.Backend.core.blockheader import BlockHeader
 from Blockchain.Backend.util.util import hash256, merkle_root, target_to_bits, bits_to_target
 from Blockchain.Backend.core.database.database import BlockchainDB, NodeDB
 from Blockchain.Backend.core.Tx import CoinbaseTx, Tx
-from multiprocessing import Process, Manager
-from Blockchain.Frontend.run import main as run_main
 from Blockchain.Backend.core.network.syncManager import syncManager
 from Blockchain.client.autoBroadcastTX import autoBroadcast
-import time
 
 ZERO_HASH = "0" * 64
 VERSION = 1
@@ -340,7 +338,7 @@ class Blockchain:
         while True:
             lastBlock = self.fetch_last_block()
             BlockHeight = lastBlock["Height"] + 1
-            print(f"Current Block Height is is {BlockHeight}")
+            print(f"Current Block Height is {BlockHeight}")
             prevBlockHash = lastBlock["BlockHeader"]["blockHash"]
             self.addBlock(BlockHeight, prevBlockHash)
 
@@ -349,6 +347,8 @@ if __name__ == "__main__":
     config.read('config.ini')
     localHost = config['MINER']['host']
     Port = int(config['MINER']['port'])
+    peerHost = '172.16.190.58'
+    peerPort = 8000
     simulateBTC = config.getboolean('MINER', 'simulatebtc')
     webport = int(config['Webhost']['port'])
 
@@ -357,9 +357,6 @@ if __name__ == "__main__":
         MemPool = manager.dict()
         newBlockAvailable = manager.dict()
         secondryChain = manager.dict()
-
-        webapp = Process(target=run_main, args=(utxos, MemPool, webport, Port))
-        webapp.start()
 
         sync = syncManager(localHost, Port, newBlockAvailable, secondryChain, MemPool)
         startServer = Process(target=sync.spinUpTheServer)
@@ -372,6 +369,9 @@ if __name__ == "__main__":
         if simulateBTC:
             autoBroadcastTxs = Process(target=autoBroadcast)
             autoBroadcastTxs.start()
+
+        # Connect to the specified peer
+        sync.connectToHost(peerHost, peerPort)
 
         blockchain.settargetWhileBooting()
         blockchain.main()
