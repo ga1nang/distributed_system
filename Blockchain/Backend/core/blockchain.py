@@ -5,6 +5,7 @@ sys.path.append("E:\\subject\\Distributed_System\\test\\oke1")
 import configparser
 from multiprocessing import Process, Manager
 import time
+import copy
 from Blockchain.Backend.core.block import Block
 from Blockchain.Backend.core.blockheader import BlockHeader
 from Blockchain.Backend.util.util import hash256, merkle_root, target_to_bits, bits_to_target
